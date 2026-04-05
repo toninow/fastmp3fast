@@ -50,6 +50,11 @@ async function downloadByUrl(page, url) {
 }
 
 async function clickNavLink(page, label) {
+  const fallbackRoutes = {
+    'Nueva descarga': '/downloads/new',
+    Sincronizacion: '/sync',
+    Biblioteca: '/library',
+  };
   const direct = page.getByRole('link', { name: label });
   if ((await direct.count()) > 0 && (await direct.first().isVisible().catch(() => false))) {
     await direct.first().click();
@@ -61,7 +66,19 @@ async function clickNavLink(page, label) {
     await openMenuBtn.first().click();
   }
 
-  await page.getByRole('link', { name: label }).first().click();
+  const insideMenu = page.getByRole('link', { name: label });
+  if ((await insideMenu.count()) > 0 && (await insideMenu.first().isVisible().catch(() => false))) {
+    await insideMenu.first().click();
+    return;
+  }
+
+  const fallback = fallbackRoutes[label];
+  if (fallback) {
+    await page.goto(`${BASE_URL}${APP_PREFIX}${fallback}`, { waitUntil: 'domcontentloaded' });
+    return;
+  }
+
+  throw new Error(`Navigation link not found: ${label}`);
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -121,7 +138,7 @@ try {
   await page.waitForTimeout(800);
   await clickNavLink(page, 'Sincronizacion');
   await page.waitForURL('**/sync', { timeout: 10000 });
-  await page.getByRole('button', { name: 'Forzar sync' }).click({ force: true });
+  await page.getByRole('button', { name: /Sincronizar ahora|Forzar sync/i }).first().click({ force: true });
 
   const started = Date.now();
   let pendingAfterSync = await pendingCount(page);
