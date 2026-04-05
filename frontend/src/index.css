@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 10% 10%, rgba(163, 255, 18, 0.07), transparent 25%),
+    radial-gradient(circle at 90% 20%, rgba(247, 231, 51, 0.06), transparent 25%),
+    #090b0d;
+  color: #e7ecf3;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.icon-toggle {
+  @apply grid h-10 w-10 place-items-center rounded-lg border border-[#2A3036] bg-[#14191E];
+}
+
+.player-btn {
+  @apply grid h-8 w-8 place-items-center rounded-md border border-[#2A3036] bg-[#151B20] text-[#B7C0CB] hover:text-[#A3FF12];
+}
+
+.simple-btn {
+  @apply rounded-md border border-[#2A3036] bg-[#151B20] px-2 py-1 text-xs text-[#D0D8E2] hover:border-[#6B6420] hover:text-[#F7E733];
+}
+
+.surface-card {
+  @apply rounded-xl border border-[#262C33] bg-[#11161A];
+}
+
+.surface-card-hover {
+  @apply transition hover:border-[#384049] hover:shadow-[0_0_20px_rgba(0,0,0,.32)];
+}
+
+.media-card {
+  @apply overflow-hidden rounded-xl border border-[#252C33] bg-[linear-gradient(180deg,#151B20_0%,#12171C_100%)] shadow-[0_12px_28px_rgba(0,0,0,0.28)];
+}
+
+.media-card-hover {
+  @apply transition hover:border-[#3A434C] hover:shadow-[0_0_24px_rgba(0,0,0,.34)];
+}
+
+.media-card-cover {
+  @apply w-full overflow-hidden border-b border-[#242B32] bg-[#0F1317];
+}
+
+.media-card-body {
+  @apply space-y-2 p-3;
+}
+
+.media-card-actions {
+  @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+}
+
+@keyframes playerOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes playerPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes playerMiniIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

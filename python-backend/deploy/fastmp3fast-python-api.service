@@ -1,0 +1,17 @@
+[Unit]
+Description=FASTMP3FAST Python API (FastAPI + yt-dlp)
+After=network.target
+
+[Service]
+Type=simple
+User=antonio
+Group=www-data
+WorkingDirectory=/var/www/html/fastmp3fast/python-backend
+EnvironmentFile=/var/www/html/fastmp3fast/python-backend/.env
+Environment=PYTHONPATH=/var/www/html/fastmp3fast/python-backend
+ExecStart=/var/www/html/fastmp3fast/python-backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

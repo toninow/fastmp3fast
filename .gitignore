@@ -1,0 +1,42 @@
+# Root
+.DS_Store
+*.log
+.tmp/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/playwright-report/
+frontend/test-results/
+
+# Python backend
+python-backend/.env
+python-backend/.venv/
+python-backend/.local/
+python-backend/data/
+python-backend/uvicorn.log
+python-backend/*.sqlite3
+python-backend/*.db
+python-backend/*.db-shm
+python-backend/*.db-wal
+
+# Keep sample env and app code
+!python-backend/.env.example
+
+# Laravel backend local artifacts
+backend/vendor/
+backend/node_modules/
+backend/public/build/
+backend/public/hot
+backend/public/storage
+backend/storage/*.key
+backend/storage/logs/*.log
+
+# Security
+**/youtube.cookies.txt
+**/cookies.txt
+
+# Python caches
+**/__pycache__/
+*.pyc

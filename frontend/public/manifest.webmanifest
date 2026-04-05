@@ -1,0 +1,19 @@
+{
+  "name": "FASTMP3FAST",
+  "short_name": "FASTMP3FAST",
+  "description": "Private offline-first multimedia library",
+  "start_url": "/fastmp3fast/",
+  "display": "standalone",
+  "background_color": "#090B0D",
+  "theme_color": "#0A0C0E",
+  "orientation": "portrait-primary",
+  "scope": "/fastmp3fast/",
+  "icons": [
+    {
+      "src": "/fastmp3fast/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
