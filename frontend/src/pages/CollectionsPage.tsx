@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { FolderOpen, FolderPlus, Pencil, Trash2 } from 'lucide-react';
+import { FolderOpen, FolderPlus, Pencil, PlayCircle, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/db/database';
 import { apiEndpoints } from '../lib/api/endpoints';
@@ -9,6 +9,9 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useUiStore } from '../store/uiStore';
 import { resolveDownloadCover } from '../lib/covers';
 import type { CollectionItem, DownloadItem } from '../types/models';
+import { usePlayerStore } from '../store/playerStore';
+import { buildTrack } from '../lib/playerTrack';
+import { isDownloadReady } from '../lib/mediaAccess';
 
 const colorOptions = ['#A3FF12', '#F7E733', '#6EE7B7', '#67E8F9', '#F97316'];
 
@@ -16,8 +19,10 @@ export function CollectionsPage() {
   const navigate = useNavigate();
   const online = useOnlineStatus();
   const pushToast = useUiStore((state) => state.pushNotification);
+  const setQueue = usePlayerStore((state) => state.setQueue);
   const collections = useLiveQuery(() => db.collections.orderBy('order').toArray(), []);
   const downloads = useLiveQuery(() => db.downloads.toArray(), []);
+  const subtitles = useLiveQuery(() => db.subtitles.toArray(), []);
 
   const [creating, setCreating] = useState(false);
   const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
@@ -279,6 +284,38 @@ export function CollectionsPage() {
     return covers;
   };
 
+  const playCollection = (collection: CollectionItem) => {
+    const ids = Array.isArray(collection.itemIds) ? collection.itemIds : [];
+    const orderedItems = ids
+      .map((itemId) => downloadByLocalId.get(itemId))
+      .filter((item): item is DownloadItem => Boolean(item));
+
+    const playableItems = orderedItems.filter((item) => isDownloadReady(item));
+    if (playableItems.length === 0) {
+      pushToast({
+        id: crypto.randomUUID(),
+        title: 'Lista sin medios descargados',
+        body: 'Descarga al menos un MP3 o MP4 de esta lista para poder reproducirla.',
+        createdAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const tracks = playableItems.map((item) =>
+      buildTrack(item, (subtitles ?? []).filter((sub) => sub.downloadLocalId === item.localId))
+    );
+    setQueue(tracks, tracks[0]?.localId);
+
+    if (playableItems.length < orderedItems.length) {
+      pushToast({
+        id: crypto.randomUUID(),
+        title: 'Reproducción iniciada',
+        body: `Se omitieron ${orderedItems.length - playableItems.length} elementos no descargados.`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  };
+
   return (
     <section className='space-y-4'>
       <div className='flex items-center justify-between'>
@@ -368,7 +405,15 @@ export function CollectionsPage() {
                 </div>
                 <p className='mt-2 line-clamp-2 text-sm text-[#9AA4AF]'>{collection.description || 'Sin descripción'}</p>
                 <p className='mt-4 text-xs uppercase tracking-[0.08em] text-[#A3FF12]'>items: {collection.itemIds.length}</p>
-                <div className='mt-3 grid grid-cols-3 gap-2'>
+                <div className='mt-3 grid grid-cols-2 gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => playCollection(collection)}
+                    className='inline-flex h-8 items-center justify-center gap-1 rounded-md border border-[#2F5B2B] bg-[#182516] px-2 text-xs text-[#A3FF12]'
+                  >
+                    <PlayCircle size={12} />
+                    Reproducir
+                  </button>
                   <button
                     type='button'
                     onClick={() => navigate(`/collections/${collection.localId}`)}
