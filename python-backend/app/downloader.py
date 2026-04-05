@@ -111,6 +111,78 @@ def _resolve_ffmpeg_location() -> str | None:
     return None
 
 
+def _resolve_ffprobe_binary() -> str | None:
+    configured = str(settings.ffmpeg_bin or "").strip()
+
+    if configured:
+        configured_path = Path(configured)
+        if configured_path.is_absolute():
+            if configured_path.is_file():
+                candidate = configured_path.parent / "ffprobe"
+                if candidate.is_file():
+                    return str(candidate)
+            elif configured_path.is_dir():
+                candidate = configured_path / "ffprobe"
+                if candidate.is_file():
+                    return str(candidate)
+
+        discovered = shutil.which(configured)
+        if discovered:
+            sibling = Path(discovered).parent / "ffprobe"
+            if sibling.is_file():
+                return str(sibling)
+
+    generic = shutil.which("ffprobe")
+    if generic:
+        return generic
+
+    return None
+
+
+def _probe_media_metadata(path: Path) -> dict[str, Any]:
+    ffprobe_bin = _resolve_ffprobe_binary()
+    if not ffprobe_bin or not path.is_file():
+        return {}
+
+    command = [
+        ffprobe_bin,
+        "-v",
+        "error",
+        "-show_streams",
+        "-of",
+        "json",
+        str(path),
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=20, check=False)
+    except Exception:
+        return {}
+
+    if result.returncode != 0:
+        return {}
+
+    parsed = _safe_json_loads(result.stdout or "{}")
+    if not isinstance(parsed, dict):
+        return {}
+
+    streams = parsed.get("streams") if isinstance(parsed.get("streams"), list) else []
+    output: dict[str, Any] = {}
+    for stream in streams:
+        if not isinstance(stream, dict):
+            continue
+        codec_type = str(stream.get("codec_type") or "").lower()
+        if codec_type == "video" and "video_height" not in output:
+            output["video_codec"] = stream.get("codec_name")
+            output["video_width"] = _safe_int(stream.get("width"), 0) or None
+            output["video_height"] = _safe_int(stream.get("height"), 0) or None
+        elif codec_type == "audio" and "audio_codec" not in output:
+            output["audio_codec"] = stream.get("codec_name")
+            bit_rate = _safe_int(stream.get("bit_rate"), 0)
+            output["audio_bitrate_kbps"] = (bit_rate // 1000) if bit_rate > 0 else None
+
+    return output
+
+
 def _supports_remote_components_option() -> bool:
     global _REMOTE_COMPONENTS_SUPPORT_CACHE
 
@@ -139,9 +211,11 @@ def _supports_remote_components_option() -> bool:
 
 def _default_youtube_player_client() -> str:
     # YouTube marks android client as incompatible with cookies.
-    # If cookies are available, prioritize web clients to avoid ignored-cookie warnings.
+    # With cookies enabled, avoid mweb by default because many videos require
+    # additional GVS/PO tokens there and end up exposing only low-quality formats.
+    # web_safari tends to keep higher quality variants available with cookies.
     if _effective_cookies_file() is not None:
-        return "web,mweb"
+        return "web_safari,web"
     return "android,web"
 
 
@@ -260,11 +334,7 @@ def probe_formats(url: str) -> dict[str, Any]:
     ]
     _append_ytdlp_network_options(command)
     if _is_youtube_url(url):
-        command.extend(["--extractor-args", "youtube:player_client=android,web"])
-        if _supports_impersonate_target("chrome"):
-            command.extend(["--impersonate", "chrome"])
-        if _has_binary("node"):
-            command.extend(["--js-runtimes", "node"])
+        _append_youtube_options(command, player_client=None, impersonate="chrome")
     command.append(url)
 
     proc = subprocess.run(
@@ -1084,7 +1154,8 @@ class DownloadWorker:
                 cookies_loaded = _effective_cookies_file() is not None
                 fallback_profiles: list[tuple[str, str | None]] = (
                     [
-                        ("web,mweb", "chrome"),
+                        ("web_safari,web", "chrome"),
+                        ("web_safari", "chrome"),
                         ("web", "chrome"),
                         ("mweb", "chrome"),
                     ]
@@ -1169,6 +1240,7 @@ class DownloadWorker:
             return
 
         stat = media_file.stat()
+        media_probe = _probe_media_metadata(media_file)
         unique_warnings = list(dict.fromkeys(warnings))
         media_ext = media_file.suffix.lower().lstrip(".")
         if preferred_ext and media_ext != preferred_ext:
@@ -1178,14 +1250,25 @@ class DownloadWorker:
             )
 
         requested_video_height = _video_height_from_quality(download_meta.get("video_quality"))
-        actual_video_height = _safe_int(extracted_metadata.get("height"), 0)
+        actual_video_height = _safe_int(media_probe.get("video_height"), 0) or _safe_int(extracted_metadata.get("height"), 0)
         if requested_video_height and actual_video_height and actual_video_height < requested_video_height:
             unique_warnings.append(
                 f"Calidad solicitada: {requested_video_height}p; calidad entregada por origen: {actual_video_height}p."
             )
+        elif (
+            not requested_video_height
+            and _normalize_download_type(download.get("type")) == "video_mp4"
+            and actual_video_height
+            and actual_video_height < 720
+            and _is_youtube_url(str(download.get("source_url") or ""))
+        ):
+            unique_warnings.append(
+                "YouTube solo expuso una versión de baja resolución para este intento. "
+                "Reintenta con cookies actualizadas o más tarde para recuperar más calidades."
+            )
 
         requested_audio_quality = str(download_meta.get("audio_quality") or "").lower()
-        actual_abr = _safe_int(extracted_metadata.get("abr"), 0)
+        actual_abr = _safe_int(media_probe.get("audio_bitrate_kbps"), 0) or _safe_int(extracted_metadata.get("abr"), 0)
         if "320" in requested_audio_quality and actual_abr and actual_abr < 300:
             unique_warnings.append(
                 f"Calidad solicitada: 320kbps; bitrate entregado por origen: {actual_abr}kbps."
@@ -1193,6 +1276,7 @@ class DownloadWorker:
 
         final_metadata = dict(download_meta)
         final_metadata.update(extracted_metadata)
+        final_metadata.update(media_probe)
         final_metadata["progress_percent"] = 100.0
         final_metadata["progress_state"] = "completed"
         final_metadata["progress_line"] = "Descarga completada"
