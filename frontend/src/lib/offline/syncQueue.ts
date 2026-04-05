@@ -225,10 +225,16 @@ export async function refreshCollectionsFromBackend(): Promise<void> {
       if (!value) {
         continue;
       }
-      if (value.startsWith('dl-')) {
+
+      // Backend can return collection item refs as local_uid (e.g. dl-..., batch-...)
+      // or as remote numeric ids. Keep local-like refs directly so they can resolve
+      // as soon as downloads hydrate in IndexedDB.
+      const looksNumeric = /^\d+$/.test(value);
+      if (!looksNumeric) {
         localIds.push(value);
         continue;
       }
+
       const byRemote = await db.downloads.where('remoteId').equals(value).first();
       if (byRemote?.localId) {
         localIds.push(byRemote.localId);
