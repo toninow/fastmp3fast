@@ -5,6 +5,7 @@ import { db } from '../../lib/db/database';
 import { useUiStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
+import { getSyncStatusClass, getSyncStatusText } from '../../lib/syncStatus';
 
 export function Topbar() {
   const navigate = useNavigate();
@@ -20,6 +21,9 @@ export function Topbar() {
     const q = search.trim();
     navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
   };
+  const syncStatus = sync?.status ?? (online ? 'idle' : 'offline');
+  const syncText = getSyncStatusText(syncStatus, { compact: true });
+  const syncClass = getSyncStatusClass(syncStatus);
 
   return (
     <header className='sticky top-0 z-30 border-b border-[#242A30] bg-[#0D1114]/95 px-3 py-3 backdrop-blur md:px-4'>
@@ -68,7 +72,7 @@ export function Topbar() {
         </div>
 
         <div className='hidden rounded-lg border border-[#2A3036] bg-[#14191E] px-3 py-2 text-xs text-[#C8D0D8] md:block'>
-          Sync: <span className='font-semibold text-[#A3FF12]'>{sync?.status ?? 'idle'}</span>
+          Sincronización: <span className={`font-semibold ${syncClass}`}>{syncText}</span>
         </div>
 
         <button

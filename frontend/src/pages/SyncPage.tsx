@@ -2,10 +2,18 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { RefreshCw } from 'lucide-react';
 import { db } from '../lib/db/database';
 import { processPendingOperations } from '../lib/offline/syncQueue';
+import { getOperationStatusText, getSyncStatusText } from '../lib/syncStatus';
 
 export function SyncPage() {
   const syncState = useLiveQuery(() => db.syncState.get('global'));
   const pending = useLiveQuery(() => db.pendingOperations.orderBy('createdAt').reverse().toArray(), []);
+  const currentStatus = String(syncState?.status ?? 'idle');
+  const stateTone =
+    currentStatus === 'sync_error'
+      ? 'red'
+      : currentStatus === 'offline'
+        ? 'yellow'
+        : 'green';
 
   return (
     <section className='space-y-4'>
@@ -19,12 +27,12 @@ export function SyncPage() {
           onClick={() => void processPendingOperations()}
           className='inline-flex items-center gap-2 rounded-lg border border-[#2F5B2B] bg-[#182516] px-3 py-2 text-sm text-[#A3FF12]'
         >
-          <RefreshCw size={14} /> Forzar sync
+          <RefreshCw size={14} /> Sincronizar ahora
         </button>
       </div>
 
       <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <SyncStat label='Estado' value={syncState?.status ?? 'idle'} tone='green' />
+        <SyncStat label='Estado' value={getSyncStatusText(currentStatus)} tone={stateTone} />
         <SyncStat label='Pendientes' value={String((pending ?? []).filter((x) => x.status === 'pending').length)} tone='yellow' />
         <SyncStat label='Sincronizadas' value={String((pending ?? []).filter((x) => x.status === 'synced').length)} tone='green' />
         <SyncStat label='Errores' value={String((pending ?? []).filter((x) => x.status === 'error').length)} tone='red' />
@@ -39,7 +47,7 @@ export function SyncPage() {
                 {op.operation} • {op.entityType}
               </p>
               <p className='text-xs text-[#8D97A2]'>
-                {op.status} • intentos: {op.attempts}
+                {getOperationStatusText(op.status)} • intentos: {op.attempts}
               </p>
             </div>
           ))}
