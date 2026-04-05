@@ -1,4 +1,4 @@
-import { Bolt, Lock, UserRound } from 'lucide-react';
+import { Lock, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -62,9 +62,7 @@ export function LoginPage() {
         onSubmit={submit}
         className='relative z-10 w-full max-w-md rounded-2xl border border-[#2A3036] bg-[#101418]/95 p-7 shadow-[0_0_45px_rgba(0,0,0,.55)]'
       >
-        <p className='flex items-center gap-2 text-2xl font-bold tracking-[0.1em] text-[#EFF4FA]'>
-          <Bolt size={20} className='text-[#A3FF12]' /> FASTMP3FAST
-        </p>
+        <img src='/branding/logo-wordmark.png' alt='FASTMP3FAST' className='h-10 w-auto max-w-[260px] object-contain' />
         <p className='mt-2 text-sm text-[#A8AFB8]'>Acceso privado a tu biblioteca multimedia offline-first.</p>
 
         <label className='mt-6 block text-xs uppercase tracking-[0.08em] text-[#8B95A0]'>Usuario</label>

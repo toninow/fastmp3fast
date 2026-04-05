@@ -1,5 +1,4 @@
 import {
-  Bolt,
   Clock3,
   Download,
   Grid2x2,
@@ -58,9 +57,7 @@ export function Sidebar({ mobile = false, open = true }: SidebarProps) {
     <aside className={baseClasses}>
       <div className='mb-6 rounded-xl border border-[#2F5B2B] bg-[#131A15] px-4 py-3 shadow-[0_0_22px_rgba(163,255,18,.08)]'>
         <div className='flex items-center justify-between gap-2'>
-          <p className='flex items-center gap-2 text-lg font-bold tracking-[0.08em] text-[#F3F6FA]'>
-            <Bolt size={18} className='text-[#A3FF12]' /> FASTMP3FAST
-          </p>
+          <img src='/branding/logo-wordmark.png' alt='FASTMP3FAST' className='h-8 w-auto max-w-[180px] object-contain' />
           {mobile && (
             <button
               type='button'

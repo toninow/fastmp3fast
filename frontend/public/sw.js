@@ -1,14 +1,22 @@
-const CACHE_VERSION = 'fastmp3fast-v3-2026-04-04-collections-covers-v8';
+const CACHE_VERSION = 'fastmp3fast-v3-2026-04-05-branding-v9';
 const APP_PREFIXES = ['/fastmp3fast', '/mp3fastmp3'];
 const APP_SHELL = [
   '/fastmp3fast/',
   '/fastmp3fast/index.html',
   '/fastmp3fast/manifest.webmanifest',
   '/fastmp3fast/favicon.svg',
+  '/fastmp3fast/branding/pwa-192.png',
+  '/fastmp3fast/branding/pwa-512.png',
+  '/fastmp3fast/branding/pwa-512-maskable.png',
+  '/fastmp3fast/branding/logo-wordmark.png',
   '/mp3fastmp3/',
   '/mp3fastmp3/index.html',
   '/mp3fastmp3/manifest.webmanifest',
   '/mp3fastmp3/favicon.svg',
+  '/mp3fastmp3/branding/pwa-192.png',
+  '/mp3fastmp3/branding/pwa-512.png',
+  '/mp3fastmp3/branding/pwa-512-maskable.png',
+  '/mp3fastmp3/branding/logo-wordmark.png',
 ];
 
 function isApiRequest(request) {
