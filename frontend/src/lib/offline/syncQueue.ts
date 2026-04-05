@@ -157,7 +157,7 @@ function toCollectionItem(raw: Record<string, unknown>, previous?: CollectionIte
 }
 
 export async function refreshDownloadsFromBackend(): Promise<void> {
-  const response = await apiEndpoints.downloads();
+  const response = await apiEndpoints.downloads({ page: 1, per_page: 200 });
   const candidate = response?.data?.data;
   const rows = Array.isArray(candidate) ? candidate : candidate?.data;
   if (!Array.isArray(rows)) {

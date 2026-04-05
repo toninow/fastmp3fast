@@ -59,6 +59,15 @@ h3 {
   @apply transition hover:border-[#3A434C] hover:shadow-[0_0_24px_rgba(0,0,0,.34)];
 }
 
+.media-card-downloading {
+  border-color: #7e8f2a;
+  box-shadow:
+    0 0 0 1px rgba(163, 255, 18, 0.26),
+    0 0 28px rgba(163, 255, 18, 0.14),
+    0 12px 28px rgba(0, 0, 0, 0.32);
+  animation: downloadCardPulse 1.6s ease-in-out infinite;
+}
+
 .media-card-cover {
   @apply w-full overflow-hidden border-b border-[#242B32] bg-[#0F1317];
 }
@@ -69,6 +78,37 @@ h3 {
 
 .media-card-actions {
   @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+}
+
+.download-progress-indeterminate {
+  background: linear-gradient(90deg, rgba(163, 255, 18, 0.08) 0%, rgba(163, 255, 18, 0.95) 50%, rgba(163, 255, 18, 0.08) 100%);
+  background-size: 220% 100%;
+  animation: progressSweep 1.1s linear infinite;
+}
+
+@keyframes progressSweep {
+  from {
+    background-position: 220% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes downloadCardPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(163, 255, 18, 0.22),
+      0 0 18px rgba(163, 255, 18, 0.1),
+      0 12px 28px rgba(0, 0, 0, 0.32);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(163, 255, 18, 0.4),
+      0 0 32px rgba(163, 255, 18, 0.18),
+      0 12px 28px rgba(0, 0, 0, 0.34);
+  }
 }
 
 @keyframes playerOverlayIn {

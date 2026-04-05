@@ -5,7 +5,7 @@ export const apiEndpoints = {
     api.post('/auth/login', payload).then((r) => r.data),
   me: () => api.get('/auth/me').then((r) => r.data),
   dashboard: (params?: { scope?: 'mine' | 'all' }) => api.get('/dashboard', { params }).then((r) => r.data),
-  downloads: (params?: { scope?: 'mine' | 'all'; target_user_id?: number; q?: string; status?: string }) =>
+  downloads: (params?: { scope?: 'mine' | 'all'; target_user_id?: number; q?: string; status?: string; page?: number; per_page?: number }) =>
     api.get('/downloads', { params }).then((r) => r.data),
   createDownload: (payload: unknown) => api.post('/downloads', payload).then((r) => r.data),
   downloadFormats: (url: string) => api.get('/downloads/formats', { params: { url }, timeout: 90000 }).then((r) => r.data),

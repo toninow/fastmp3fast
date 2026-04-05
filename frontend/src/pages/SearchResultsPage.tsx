@@ -85,7 +85,13 @@ export function SearchResultsPage() {
   const recentDownloads = useLiveQuery(() => db.downloads.orderBy('createdAt').reverse().limit(8).toArray(), []);
   const subtitles = useLiveQuery(() => db.subtitles.toArray(), []);
   const isDownloadInFlight = (row: DownloadItem) => ['pending', 'queued', 'processing', 'syncing', 'offline'].includes(row.status);
-  const getProgress = (row: DownloadItem) => Math.max(0, Math.min(100, Number(row.progressPercent ?? (isDownloadInFlight(row) ? 8 : 0))));
+  const getProgress = (row: DownloadItem) => {
+    const raw = row.progressPercent;
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      return null;
+    }
+    return Math.max(0, Math.min(100, Number(raw)));
+  };
   const statusTone = (item: DownloadItem) => {
     if (item.status === 'error') {
       return 'border-[#5A2028] bg-[#2A1316] text-[#FFB7BD]';
@@ -162,6 +168,11 @@ export function SearchResultsPage() {
     return map;
   }, [downloads]);
 
+  const hasInFlightDownloads = useMemo(
+    () => Boolean((downloads ?? []).some((row) => isDownloadInFlight(row))),
+    [downloads]
+  );
+
   useEffect(() => {
     const q = initialQuery.trim();
     if (!q) {
@@ -225,11 +236,13 @@ export function SearchResultsPage() {
     if (!online || !initialQuery.trim()) {
       return;
     }
+    const intervalMs = hasInFlightDownloads ? 1200 : 6000;
+    void refreshDownloadsFromBackend();
     const timer = window.setInterval(() => {
       void refreshDownloadsFromBackend();
-    }, 7000);
+    }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [online, initialQuery]);
+  }, [online, initialQuery, hasInFlightDownloads]);
 
   const canLoadMoreRemote =
     Boolean(initialQuery.trim()) &&
@@ -776,13 +789,19 @@ export function SearchResultsPage() {
                       )}
 
                       {isPending && (
-                        <div className='rounded border border-[#2A323A] bg-[#141A1F] p-2'>
+                        <div className='rounded border border-[#5D6E1D] bg-[#151C14] p-2 shadow-[0_0_0_1px_rgba(163,255,18,0.18),0_0_22px_rgba(163,255,18,0.12)]'>
                           <div className='flex items-center justify-between gap-2'>
                             <span className='line-clamp-1 text-[11px] text-[#9AA4AF]'>{item.progressLine || 'Descargando...'}</span>
-                            <span className='text-[11px] font-semibold text-[#A3FF12]'>{progress.toFixed(0)}%</span>
+                            <span className='text-[11px] font-semibold text-[#A3FF12]'>
+                              {progress === null ? '...' : `${progress.toFixed(0)}%`}
+                            </span>
                           </div>
                           <div className='mt-1 h-1.5 overflow-hidden rounded-full bg-[#222932]'>
-                            <div className='h-full rounded-full bg-[#A3FF12] transition-all' style={{ width: `${progress}%` }} />
+                            {progress === null ? (
+                              <div className='download-progress-indeterminate h-full w-full rounded-full' />
+                            ) : (
+                              <div className='h-full rounded-full bg-[#A3FF12] transition-all duration-300' style={{ width: `${progress}%` }} />
+                            )}
                           </div>
                         </div>
                       )}
@@ -888,7 +907,10 @@ export function SearchResultsPage() {
                       : 'Mejor disponible'
                     : remoteVideoQuality;
                 return (
-                <div key={`${item.id ?? item.webpage_url}`} className='media-card media-card-hover'>
+                <div
+                  key={`${item.id ?? item.webpage_url}`}
+                  className={`media-card media-card-hover ${existingPending ? 'media-card-downloading' : ''}`}
+                >
                   <div className='media-card-cover h-44'>
                     {cover ? (
                       <img src={cover} alt={title} className='h-full w-full object-cover' />
@@ -964,13 +986,19 @@ export function SearchResultsPage() {
                       )}
                     </div>
                     {existingPending && (
-                      <div className='rounded border border-[#2A323A] bg-[#141A1F] p-2'>
+                      <div className='rounded border border-[#5D6E1D] bg-[#151C14] p-2 shadow-[0_0_0_1px_rgba(163,255,18,0.18),0_0_22px_rgba(163,255,18,0.12)]'>
                         <div className='flex items-center justify-between gap-2'>
                           <span className='line-clamp-1 text-[11px] text-[#9AA4AF]'>{existing?.progressLine || 'Descargando...'}</span>
-                          <span className='text-[11px] font-semibold text-[#A3FF12]'>{progress.toFixed(0)}%</span>
+                          <span className='text-[11px] font-semibold text-[#A3FF12]'>
+                            {progress === null ? '...' : `${progress.toFixed(0)}%`}
+                          </span>
                         </div>
                         <div className='mt-1 h-1.5 overflow-hidden rounded-full bg-[#222932]'>
-                          <div className='h-full rounded-full bg-[#A3FF12] transition-all' style={{ width: `${progress}%` }} />
+                          {progress === null ? (
+                            <div className='download-progress-indeterminate h-full w-full rounded-full' />
+                          ) : (
+                            <div className='h-full rounded-full bg-[#A3FF12] transition-all duration-300' style={{ width: `${progress}%` }} />
+                          )}
                         </div>
                         <div className='mt-1 flex flex-wrap gap-2 text-[10px] text-[#8E98A3]'>
                           {existing?.progressSpeed && <span>{existing.progressSpeed}</span>}
