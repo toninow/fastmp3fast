@@ -6,6 +6,7 @@ import {
   Mic2,
   Pause,
   Play,
+  Repeat,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -40,6 +41,8 @@ export function MiniPlayer() {
     closePlayer,
     playbackMode,
     setPlaybackMode,
+    repeatMode,
+    setRepeatMode,
     onTrackEnded,
     subtitleLanguage,
     setSubtitleLanguage,
@@ -47,6 +50,7 @@ export function MiniPlayer() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [queueVisible, setQueueVisible] = useState(true);
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pushToast = useUiStore((state) => state.pushNotification);
@@ -227,10 +231,18 @@ export function MiniPlayer() {
         className={
           miniMode
             ? 'w-full transform-gpu transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)]'
-            : 'w-full max-w-6xl overflow-hidden rounded-2xl border border-[#2D343B] bg-[#0F1418] shadow-[0_0_50px_rgba(0,0,0,.6)] transform-gpu transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] animate-[playerPanelIn_.28s_cubic-bezier(.22,1,.36,1)]'
+            : 'w-full max-w-[min(96vw,1500px)] overflow-hidden rounded-2xl border border-[#2D343B] bg-[#0F1418] shadow-[0_0_50px_rgba(0,0,0,.6)] transform-gpu transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] animate-[playerPanelIn_.28s_cubic-bezier(.22,1,.36,1)]'
         }
       >
-        <div className={miniMode ? 'space-y-3 p-3' : 'grid gap-4 p-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,1fr)]'}>
+        <div
+          className={
+            miniMode
+              ? 'space-y-3 p-3'
+              : queueVisible
+                ? 'grid gap-4 p-4 lg:grid-cols-[minmax(0,1.85fr)_minmax(360px,1fr)]'
+                : 'grid gap-4 p-4 lg:grid-cols-1'
+          }
+        >
           <div className='space-y-3'>
             <div className='flex items-center justify-between gap-3'>
               <button
@@ -254,7 +266,7 @@ export function MiniPlayer() {
                 <div className='min-w-0'>
                   <p className='line-clamp-2 text-sm font-semibold text-[#E9EEF6]'>{currentTrack.title}</p>
                   <p className='text-[11px] uppercase tracking-[0.08em] text-[#9AA3AE]'>
-                    {currentTrack.mediaKind} • {isPlaying ? 'playing' : 'paused'} • {playbackMode === 'shuffle' ? 'aleatorio' : 'ordenado'}
+                    {currentTrack.mediaKind} • {isPlaying ? 'playing' : 'paused'} • {playbackMode === 'shuffle' ? 'aleatorio' : 'ordenado'} • {repeatMode === 'one' ? 'repetir 1' : 'sin repetir'}
                   </p>
                 </div>
               </button>
@@ -291,9 +303,10 @@ export function MiniPlayer() {
               <video
                 ref={mediaRef}
                 src={effectiveSrc}
-                className={`w-full rounded-xl border border-[#242A30] bg-[#080A0B] ${miniMode ? 'h-40' : 'h-[48vh] min-h-[280px] max-h-[560px]'}`}
+                className={`w-full rounded-xl border border-[#242A30] bg-[#080A0B] ${miniMode ? 'h-40' : 'h-[54vh] min-h-[320px] max-h-[720px]'}`}
                 poster={currentTrack.poster ?? undefined}
                 controls={false}
+                loop={repeatMode === 'one'}
                 onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
                 onLoadedMetadata={(event) => {
                   setCurrentTime(event.currentTarget.currentTime || 0);
@@ -327,6 +340,7 @@ export function MiniPlayer() {
                 <audio
                   ref={mediaRef}
                   src={effectiveSrc}
+                  loop={repeatMode === 'one'}
                   onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
                   muted={volume === 0}
                   autoPlay={isPlaying}
@@ -345,7 +359,7 @@ export function MiniPlayer() {
                   }}
                 />
                 {!miniMode && (
-                  <div className='grid h-[42vh] min-h-[250px] place-items-center rounded-xl border border-[#242A30] bg-[radial-gradient(circle_at_20%_20%,rgba(163,255,18,.12),transparent_42%),radial-gradient(circle_at_80%_16%,rgba(247,231,51,.08),transparent_42%),#0C1014] animate-[playerPanelIn_.25s_ease-out]'>
+                  <div className='grid h-[50vh] min-h-[300px] place-items-center rounded-xl border border-[#242A30] bg-[radial-gradient(circle_at_20%_20%,rgba(163,255,18,.12),transparent_42%),radial-gradient(circle_at_80%_16%,rgba(247,231,51,.08),transparent_42%),#0C1014] animate-[playerPanelIn_.25s_ease-out]'>
                     <div className='w-full max-w-[320px] rounded-2xl border border-[#2A3138] bg-[#11161A] p-4 shadow-[0_0_30px_rgba(0,0,0,.4)]'>
                       <div className='aspect-square overflow-hidden rounded-xl border border-[#303840] bg-[#0A0E11]'>
                         {currentTrack.poster ? (
@@ -370,6 +384,21 @@ export function MiniPlayer() {
                 title={playbackMode === 'shuffle' ? 'Modo aleatorio activo' : 'Modo ordenado activo'}
               >
                 {playbackMode === 'shuffle' ? <Shuffle size={14} /> : <ListOrdered size={14} />}
+              </button>
+              <button
+                type='button'
+                onClick={() => setRepeatMode(repeatMode === 'one' ? 'off' : 'one')}
+                className={`player-btn ${repeatMode === 'one' ? 'border-[#6B6420] text-[#F7E733]' : 'border-[#2A3036] text-[#B7C0CB]'}`}
+                title={repeatMode === 'one' ? 'Repetir canción activo' : 'Repetir canción desactivado'}
+              >
+                <span className='relative inline-flex'>
+                  <Repeat size={14} />
+                  {repeatMode === 'one' && (
+                    <span className='absolute -bottom-1.5 -right-1.5 rounded border border-[#6B6420] bg-[#2B2B16] px-0.5 text-[8px] leading-3 text-[#F7E733]'>
+                      1
+                    </span>
+                  )}
+                </span>
               </button>
               <button type='button' onClick={prev} className='player-btn transition-all duration-200 hover:scale-105'>
                 <SkipBack size={15} />
@@ -467,14 +496,25 @@ export function MiniPlayer() {
                 <Mic2 size={10} />
                 {offlineMediaUrl ? 'Offline activo' : 'Segundo plano activo'}
               </span>
+
+              {!miniMode && (
+                <button
+                  type='button'
+                  onClick={() => setQueueVisible((value) => !value)}
+                  className='rounded-md border border-[#3B4148] bg-[#1A1F24] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-[#D3DAE3] hover:border-[#6B6420] hover:text-[#F7E733]'
+                  title={queueVisible ? 'Ocultar cola' : 'Mostrar cola'}
+                >
+                  {queueVisible ? 'Ocultar cola' : 'Mostrar cola'}
+                </button>
+              )}
             </div>
           </div>
 
-          {!miniMode && (
+          {!miniMode && queueVisible && (
             <aside className='space-y-3 rounded-xl border border-[#252C33] bg-[#12171B] p-3 animate-[playerPanelIn_.26s_ease-out]'>
               <div className='flex items-center justify-between'>
                 <h3 className='text-sm font-semibold uppercase tracking-[0.08em] text-[#E7EDF5]'>Siguiente en cola</h3>
-                <span className='text-xs text-[#9BA6B2]'>{queue.length} total</span>
+                <span className='text-xs text-[#9BA6B2]'>{upcomingTracks.length} total</span>
               </div>
 
               <div className='max-h-[48vh] space-y-2 overflow-auto pr-1'>

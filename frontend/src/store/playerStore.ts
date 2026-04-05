@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { PlayerTrack } from '../types/models';
 
 type PlaybackMode = 'ordered' | 'shuffle';
+type RepeatMode = 'off' | 'one';
 
 const buildShufflePool = (length: number, excludeIndex: number): number[] => {
   const pool: number[] = [];
@@ -27,12 +28,14 @@ interface PlayerState {
   subtitleLanguage: string | null;
   miniMode: boolean;
   playbackMode: PlaybackMode;
+  repeatMode: RepeatMode;
   shuffleHistory: number[];
   shufflePool: number[];
   setQueue: (queue: PlayerTrack[], startLocalId?: string) => void;
   playTrack: (track: PlayerTrack) => void;
   setPlaying: (isPlaying: boolean) => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
+  setRepeatMode: (mode: RepeatMode) => void;
   next: () => void;
   prev: () => void;
   onTrackEnded: () => void;
@@ -55,6 +58,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   subtitleLanguage: null,
   miniMode: true,
   playbackMode: 'ordered',
+  repeatMode: 'off',
   shuffleHistory: [],
   shufflePool: [],
   setQueue: (queue, startLocalId) => {
@@ -97,6 +101,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         shufflePool: mode === 'shuffle' ? buildShufflePool(state.queue.length, state.currentIndex) : [],
       };
     }),
+  setRepeatMode: (repeatMode) => set({ repeatMode }),
   next: () =>
     set((state) => {
       if (state.queue.length <= 1) {
@@ -150,6 +155,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }),
   onTrackEnded: () =>
     set((state) => {
+      if (state.repeatMode === 'one') {
+        return { isPlaying: true };
+      }
+
       const total = state.queue.length;
       if (total <= 1) {
         return { isPlaying: false };
@@ -192,6 +201,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isPlaying: false,
       miniMode: true,
       subtitleLanguage: null,
+      repeatMode: 'off',
       shuffleHistory: [],
       shufflePool: [],
     }),
