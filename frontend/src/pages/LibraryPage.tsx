@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Grid2x2, List } from 'lucide-react';
 import { DownloadCard } from '../components/library/DownloadCard';
-import { DownloadsTable } from '../components/library/DownloadsTable';
+import { StatusBadge } from '../components/common/StatusBadge';
 import { db } from '../lib/db/database';
 import { usePlayerStore } from '../store/playerStore';
 import { buildTrack } from '../lib/playerTrack';
 import { useUiStore } from '../store/uiStore';
 import { apiEndpoints } from '../lib/api/endpoints';
 import { enqueueOperation, processPendingOperations, refreshCollectionsFromBackend, refreshDownloadsFromBackend, refreshSubtitlesFromBackend } from '../lib/offline/syncQueue';
-import { isDownloadReady } from '../lib/mediaAccess';
+import { buildDownloadUrl, isDownloadReady } from '../lib/mediaAccess';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import type { CollectionItem } from '../types/models';
+import { formatBytes, formatDuration } from '../lib/format';
+import { resolveDownloadCover } from '../lib/covers';
 
 const playlistColorOptions = ['#A3FF12', '#F7E733', '#6EE7B7', '#67E8F9', '#F97316'];
 
@@ -23,7 +25,7 @@ export function LibraryPage() {
   const setSearch = useUiStore((state) => state.setSearch);
   const search = searchRaw.trim().toLowerCase();
   const pushToast = useUiStore((state) => state.pushNotification);
-  const [view, setView] = useState<'grid' | 'table'>('grid');
+  const [view, setView] = useState<'grid' | 'list'>('grid');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [playlistTargetLocalId, setPlaylistTargetLocalId] = useState<string | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -84,6 +86,13 @@ export function LibraryPage() {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [downloads, search, filterStatus]);
+
+  const downloadedCount = useMemo(() => rows.filter((item) => isDownloadReady(item)).length, [rows]);
+  const downloadingCount = useMemo(
+    () => rows.filter((item) => !isDownloadReady(item) && ['pending', 'queued', 'processing', 'syncing', 'offline'].includes(item.status)).length,
+    [rows]
+  );
+  const failedCount = useMemo(() => rows.filter((item) => item.status === 'error' || Boolean(item.error)).length, [rows]);
 
   const onPlay = (localId: string) => {
     const item = rows.find((x) => x.localId === localId);
@@ -422,11 +431,25 @@ export function LibraryPage() {
           <button type='button' className='icon-toggle' onClick={() => setView('grid')}>
             <Grid2x2 size={16} className={view === 'grid' ? 'text-[#A3FF12]' : 'text-[#8C97A2]'} />
           </button>
-          <button type='button' className='icon-toggle' onClick={() => setView('table')}>
-            <List size={16} className={view === 'table' ? 'text-[#A3FF12]' : 'text-[#8C97A2]'} />
+          <button type='button' className='icon-toggle' onClick={() => setView('list')}>
+            <List size={16} className={view === 'list' ? 'text-[#A3FF12]' : 'text-[#8C97A2]'} />
           </button>
         </div>
       </div>
+
+      <article className='surface-card p-3'>
+        <div className='flex flex-wrap items-center gap-2 text-xs'>
+          <span className='rounded-md border border-[#2F5B2B] bg-[#162016] px-2 py-1 font-semibold text-[#A3FF12]'>
+            Descargadas: {downloadedCount}
+          </span>
+          <span className='rounded-md border border-[#6B6420] bg-[#2B2B16] px-2 py-1 font-semibold text-[#F7E733]'>
+            Descargando: {downloadingCount}
+          </span>
+          <span className='rounded-md border border-[#5A2028] bg-[#2A1316] px-2 py-1 font-semibold text-[#FFB7BD]'>
+            Error: {failedCount}
+          </span>
+        </div>
+      </article>
 
       {activeDownloads.length > 0 && (
         <article className='surface-card p-4'>
@@ -475,15 +498,129 @@ export function LibraryPage() {
           ))}
         </div>
       ) : (
-        <DownloadsTable
-          rows={rows}
-          onPlay={(item) => onPlay(item.localId)}
-          onOpen={(item) => navigate(`/downloads/${item.localId}`)}
-          onPlaylist={(item) => setPlaylistTargetLocalId(item.localId)}
-          onRetry={(item) => void retryItem(item.localId)}
-          onRename={(item) => void renameItem(item.localId)}
-          onDelete={(item) => void deleteItem(item.localId)}
-        />
+        <div className='space-y-2'>
+          {rows.map((item) => {
+            const canPlay = isDownloadReady(item);
+            const isDownloading = !canPlay && ['pending', 'queued', 'processing', 'syncing', 'offline'].includes(item.status);
+            const progress = Math.max(0, Math.min(100, Number(item.progressPercent ?? (isDownloading ? 8 : 0))));
+            const rawError = typeof item.error === 'string' ? item.error.trim() : '';
+            const downloadUrl = buildDownloadUrl(item);
+            const cover = resolveDownloadCover(item);
+
+            return (
+              <article
+                key={item.localId}
+                className={`rounded-xl border p-3 transition ${
+                  canPlay
+                    ? 'border-[#2F5B2B] bg-[#121A15]'
+                    : isDownloading
+                      ? 'border-[#6B6420] bg-[#1B1912]'
+                      : rawError
+                        ? 'border-[#5A2028] bg-[#1D1215]'
+                        : 'border-[#252D34] bg-[#11161A]'
+                }`}
+              >
+                <div className='flex flex-col gap-3 sm:flex-row'>
+                  <div className='h-20 w-full shrink-0 overflow-hidden rounded-lg border border-[#242A30] bg-[#0C0F12] sm:w-32'>
+                    {cover ? (
+                      <img src={cover} alt={item.title} className='h-full w-full object-cover' />
+                    ) : (
+                      <div className='grid h-full place-items-center text-xs text-[#6F7782]'>Sin portada</div>
+                    )}
+                  </div>
+
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex flex-wrap items-start justify-between gap-2'>
+                      <button type='button' onClick={() => navigate(`/downloads/${item.localId}`)} className='text-left'>
+                        <p className='line-clamp-2 text-sm font-semibold text-[#EAF0F7]'>{item.customName ?? item.title}</p>
+                        <p className='mt-0.5 text-[11px] text-[#A4AEB9]'>
+                          {item.mediaKind.toUpperCase()} • {item.uploader ?? 'Desconocido'} • {formatDuration(item.durationSeconds)} •{' '}
+                          {formatBytes(item.sizeBytes)}
+                        </p>
+                      </button>
+                      <StatusBadge status={item.status} item={item} />
+                    </div>
+
+                    {isDownloading && (
+                      <div className='mt-2 rounded-lg border border-[#2A323A] bg-[#141A1F] p-2'>
+                        <div className='flex items-center justify-between gap-2'>
+                          <p className='line-clamp-1 text-[11px] text-[#9AA4AF]'>{item.progressLine || 'Procesando descarga...'}</p>
+                          <span className='text-[11px] font-semibold text-[#A3FF12]'>{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className='mt-1 h-1.5 overflow-hidden rounded-full bg-[#222932]'>
+                          <div className='h-full rounded-full bg-[#A3FF12] transition-all' style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {rawError && <p className='mt-2 line-clamp-2 text-xs text-[#FFB7BD]'>{rawError}</p>}
+
+                    <div className='mt-3 flex flex-wrap gap-1'>
+                      <button
+                        type='button'
+                        onClick={() => canPlay && onPlay(item.localId)}
+                        disabled={!canPlay}
+                        className={`rounded-md border px-2 py-1 text-xs ${
+                          canPlay
+                            ? 'border-[#2F5B2B] bg-[#142016] text-[#A3FF12]'
+                            : 'cursor-not-allowed border-[#3D434A] bg-[#1B1F24] text-[#8A93A0]'
+                        }`}
+                      >
+                        Reproducir
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => navigate(`/downloads/${item.localId}`)}
+                        className='rounded-md border border-[#37404A] bg-[#161C22] px-2 py-1 text-xs text-[#D4DCE6]'
+                      >
+                        Abrir detalle
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => setPlaylistTargetLocalId(item.localId)}
+                        className='rounded-md border border-[#3B4148] bg-[#1A1F24] px-2 py-1 text-xs text-[#D3DAE3]'
+                      >
+                        Lista
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => void renameItem(item.localId)}
+                        className='rounded-md border border-[#6B6420] bg-[#2B2B16] px-2 py-1 text-xs text-[#F7E733]'
+                      >
+                        Renombrar
+                      </button>
+                      {rawError && (
+                        <button
+                          type='button'
+                          onClick={() => void retryItem(item.localId)}
+                          className='rounded-md border border-[#3D5A2B] bg-[#1B2A17] px-2 py-1 text-xs text-[#B9FF5A]'
+                        >
+                          Reintentar
+                        </button>
+                      )}
+                      <button
+                        type='button'
+                        onClick={() => void deleteItem(item.localId)}
+                        className='rounded-md border border-[#5A2028] bg-[#2A1316] px-2 py-1 text-xs text-[#FFB7BD]'
+                      >
+                        Eliminar
+                      </button>
+                      {downloadUrl && (
+                        <a
+                          href={downloadUrl}
+                          className='rounded-md border border-[#2F5B2B] bg-[#162516] px-2 py-1 text-xs text-[#A3FF12]'
+                          download
+                        >
+                          Descargar
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       )}
 
       {rows.length === 0 && (

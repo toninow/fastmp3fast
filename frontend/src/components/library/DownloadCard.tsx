@@ -1,4 +1,5 @@
 import { Download, ListPlus, Pause, Play, Subtitles, Tag } from 'lucide-react';
+import clsx from 'clsx';
 import type { DownloadItem } from '../../types/models';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDuration } from '../../lib/format';
@@ -28,7 +29,29 @@ export function DownloadCard({ item, onPlay, onOpen, onPlaylist, onRetry, onRena
     : rawError;
 
   return (
-    <article className='group media-card media-card-hover p-3'>
+    <article
+      className={clsx('group media-card media-card-hover p-3 transition', {
+        'border-[#2F5B2B] bg-[linear-gradient(180deg,#111A14_0%,#10161B_100%)] shadow-[0_0_16px_rgba(163,255,18,.14)]': canPlay,
+        'border-[#6B6420] bg-[linear-gradient(180deg,#1A1810_0%,#10161B_100%)] shadow-[0_0_12px_rgba(247,231,51,.1)]': isDownloading,
+        'border-[#5A2028] bg-[linear-gradient(180deg,#1F1115_0%,#10161B_100%)]': rawError,
+      })}
+    >
+      <div className='mb-2 flex items-center justify-between gap-2'>
+        <span
+          className={clsx(
+            'rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]',
+            canPlay
+              ? 'border-[#2F5B2B] bg-[#162016] text-[#A3FF12]'
+              : isDownloading
+                ? 'border-[#6B6420] bg-[#2B2B16] text-[#F7E733]'
+                : rawError
+                  ? 'border-[#5A2028] bg-[#2A1316] text-[#FFB7BD]'
+                  : 'border-[#3B4148] bg-[#1A1F24] text-[#9CA6B2]'
+          )}
+        >
+          {canPlay ? 'Descargado' : isDownloading ? 'Descargando' : rawError ? 'Error' : 'Pendiente'}
+        </span>
+      </div>
       <div className='media-card-cover relative mb-3 h-40 rounded-lg border-b-0 bg-[#0C0F12]'>
         {cover ? (
           <img src={cover} alt={item.title} className='h-full w-full object-cover opacity-90' />

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fastmp3fast-v3-2026-04-05-collections-fix-v10';
+const CACHE_VERSION = 'fastmp3fast-v3-2026-04-05-library-views-v11';
 const APP_PREFIXES = ['/fastmp3fast', '/mp3fastmp3'];
 const APP_SHELL = [
   '/fastmp3fast/',
